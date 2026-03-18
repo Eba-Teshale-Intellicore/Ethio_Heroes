@@ -1,0 +1,36 @@
+:root {
+    --primary-color: #2563eb;
+    --primary-hover: #1d4ed8;
+    --accent-color: #fbbf24; /* Gold/Yellow for "Heroes" */
+    
+    --bg-light: #f8fafc;
+    --card-bg-light: #ffffff;
+    --text-main-light: #1e293b;
+    --text-muted-light: #64748b;
+    --border-light: #e2e8f0;
+    
+    --bg-dark: #0f172a;
+    --card-bg-dark: #1e293b;
+    --text-main-dark: #f8fafc;
+    --text-muted-dark: #94a3b8;
+    --border-dark: #334155;
+    
+    --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    font-family: 'Inter', sans-serif;
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+body.light-theme { background-color: var(--bg-light); color: var(--text-main-light); }
+body.dark-theme { background-color: var(--bg-dark); color: var(--text-main-dark); }
+
+.container {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 0 20px;
+}

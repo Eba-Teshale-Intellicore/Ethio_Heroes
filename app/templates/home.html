@@ -1,0 +1,146 @@
+{% extends "index.html" %}
+{% block title %} Ethio Heroes - Discover Greatness {% endblock %}
+
+{% block main %}
+<div class="home-wrapper">
+    <!-- Hero Banner Section -->
+    <section class="hero-banner">
+        <div class="hero-content">
+            {% if session.get('full_name') %}
+                <h1 class="welcome-text">Welcome back, <span>{{ session.get('full_name') }}</span></h1>
+            {% else %}
+                <h1 class="welcome-text">Discover <span>Ethiopian Legends</span></h1>
+            {% endif %}
+            <p class="hero-subtitle">
+                Exploring the legacies of the scientists, researchers, kings, and icons who shaped history.
+            </p>
+            
+            <div class="search-container">
+                <form method="GET" action="/search" class="search-form">
+                    <i class="fas fa-search search-icon"></i>
+                    <input type="text" name="q" placeholder="Search heroes (e.g., Aklilu Lemma...)" value="{{ query }}">
+                    <button type="submit" class="btn-search">Search</button>
+                </form>
+            </div>
+        </div>
+    </section>
+
+    <!-- Main Content Section -->
+    <section class="heroes-section container">
+        <div class="section-header">
+            <h2>Our Heroes</h2>
+            <!-- <div class="filter-tags">
+                <span class="tag active">All</span>
+                <span class="tag">Scientists</span>
+                <span class="tag">Kings</span>
+                <span class="tag">Athletes</span>
+                <span class="tag">Doctors</span>
+            </div> -->
+            <div class="filter-tags">
+                    <a href="/search?q={{ query }}" 
+                        class="tag {% if not selected_category %}active{% endif %}">
+                        All
+                    </a>
+
+                {% for cat in categories %}
+                    <a href="/search?q={{ query }}&category={{ cat.name }}&era={{ selected_era }}"
+                    class="tag {% if selected_category == cat.name %}active{% endif %}">
+                        {{ cat.name }}
+                    </a>
+                {% endfor %}
+            </div>
+            <div class="filter-tags">
+                {% for e in eras %}
+                    <a href="/search?q={{ query }}&category={{ selected_category }}&era={{ e.name }}"
+                    class="tag {% if selected_era == e.name %}active{% endif %}">
+                        {{ e.name }}
+                    </a>
+                {% endfor %}
+            </div>
+        </div>
+
+        {% if heroes %}
+            <div class="hero-grid">
+                {% for hero in heroes %}
+                    <article class="hero-card">
+                        <div class="card-image-wrapper">
+                            <img src="{{ url_for('static', filename=hero.hero_image) }}" alt="{{ hero.name }}" loading="lazy">
+                            <div class="card-badges">
+                                <span class="badge category">{{ hero.category_name }}</span>
+                                <span class="badge era">{{ hero.era_name }}</span>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <h3>{{ hero.name }}</h3>
+                            <p class="hero-desc">{{ hero.short_description | truncate(100) }}</p>
+                            
+                            <div class="card-footer">
+                                {% if session.get('full_name') %}
+                                    <a href="/hero/{{ hero.id }}" class="btn-more">
+                                        Read Full Story <i class="fas fa-arrow-right"></i>
+                                    </a>
+                                {% else %}
+                                    <a href="{{ url_for('auth.login') }}" class="login-prompt">
+                                        <i class="fas fa-lock"></i> Login to Read More
+                                    </a>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </article>
+                {% endfor %}
+            </div>
+
+            <!-- Pagination Placeholder -->
+            <!-- <div class="pagination">
+                <span class="page-num active">1</span>
+                <span class="page-num">2</span>
+                <span class="page-num">3</span>
+                <span class="page-dots">...</span>
+                <span class="page-num">10</span>
+            </div> -->
+            <div class="pagination">
+                {# Prev button #}
+                {% if page > 1 %}
+                    <a href="?q={{ query }}&category={{ selected_category }}&era={{ selected_era }}&page={{ page-1 }}" class="page-prev">Prev</a>
+                {% endif %}
+
+                {# Loop through pages #}
+                {% for p in range(1, total_pages + 1) %}
+                    {% set show = false %}
+
+                    {# Show first 2 pages, last 2 pages, and pages near current (current ±2) #}
+                    {% if p <= 2 or p > total_pages - 2 or (p >= page-2 and p <= page+2) %}
+                        {% set show = true %}
+                    {% endif %}
+
+                    {# Show page or ellipsis #}
+                    {% if show %}
+                        <a href="?q={{ query }}&category={{ selected_category }}&era={{ selected_era }}&page={{ p }}"
+                        class="page-num {% if p == page %}active{% endif %}">
+                        {{ p }}
+                        </a>
+                    {% else %}
+                        {# Only show ellipsis once for gaps #}
+                        {% if loop.index > 2 and loop.index < total_pages - 2 %}
+                            {% if not loop.previtem.show %}
+                                <span class="page-dots">...</span>
+                            {% endif %}
+                        {% endif %}
+                    {% endif %}
+                {% endfor %}
+
+                {# Next button #}
+                {% if page < total_pages %}
+                    <a href="?q={{ query }}&category={{ selected_category }}&era={{ selected_era }}&page={{ page+1 }}" class="page-next">Next</a>
+                {% endif %}
+            </div>
+            </div>
+        {% else %}
+            <div class="no-results">
+                <i class="fas fa-user-slash"></i>
+                <p>No heroes found matching your search. Try another name!</p>
+            </div>
+        {% endif %}
+    </section>
+</div>
+{% endblock %}

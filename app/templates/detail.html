@@ -1,0 +1,101 @@
+{% extends "index.html" %}
+{% block title %}{{ hero.name }} - Ethio Heroes{% endblock %}
+
+{% block main %}
+<div class="detail-container">
+    <!-- Breadcrumb -->
+    <nav class="breadcrumb">
+        <a href="/">Home</a> / <span>{{ hero.name }}</span>
+    </nav>
+
+    <header class="detail-header">
+        <div class="detail-hero-img">
+            <img src="{{ url_for('static', filename=hero.hero_image) }}" alt="{{ hero.name }}">
+        </div>
+        <div class="detail-hero-info">
+            <div class="detail-badges">
+                <span class="badge category">{{ hero.category_name }}</span>
+            </div>
+            <h1>{{ hero.name }}</h1>
+            <p class="lifespan"><i class="far fa-calendar-alt"></i> {{ hero.birth_year }} — {{ hero.death_year or 'Present' }}</p>
+            <p class="nationality"><i class="fas fa-globe"></i> {{ hero.nationality }}</p>
+            <p class="short-intro">{{ hero.short_description }}</p>
+            
+            <div class="action-bar">
+                {% if favorite %}
+                    <form method="POST" action="{{ url_for('main.remove_favorite', hero_id=hero.id) }}">
+                        <button class="btn-fav active"><i class="fas fa-star"></i> Remove Favorite</button>
+                    </form>
+                {% else %}
+                    <form method="POST" action="{{ url_for('main.add_favorite', hero_id=hero.id) }}">
+                        <button class="btn-fav"><i class="far fa-star"></i> Add to Favorite</button>
+                    </form>
+                {% endif %}
+            </div>
+        </div>
+    </header>
+
+    <div class="detail-grid">
+        <main class="detail-main-content">
+            <section class="content-box">
+                <h2><i class="fas fa-history"></i> Biography</h2>
+                <div class="full-history">
+                    {{ hero.full_history }}
+                </div>
+            </section>
+
+            {% if achievements %}
+            <section class="content-box">
+                <h2><i class="fas fa-trophy"></i> Key Achievements</h2>
+                <div class="timeline">
+                    {% for a in achievements %}
+                        <div class="timeline-item">
+                            <div class="t-year">{{ a.year }}</div>
+                            <div class="t-content">
+                                <strong>{{ a.title }}</strong>
+                                <p>{{ a.description }}</p>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </section>
+            {% endif %}
+        </main>
+
+        <aside class="detail-sidebar">
+            {% if sources %}
+            <div class="sidebar-box">
+                <h3>References</h3>
+                <ul class="source-list">
+                    {% for s in sources %}
+                        <li><a href="{{ s.source_link }}" target="_blank"><i class="fas fa-external-link-alt"></i> {{ s.source_title }}</a></li>
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+
+            <div class="sidebar-box">
+                <h3>Comments</h3>
+                <form class="comment-form" method="POST" action="{{ url_for('main.add_comment', hero_id=hero.id) }}">
+                    <textarea name="comment" placeholder="Share your thoughts..." required></textarea>
+                    <button type="submit" class="btn-primary">Post Comment</button>
+                </form>
+
+                <div class="comments-list">
+                    {% if comments %}
+                        {% for c in comments %}
+                            <div class="comment-item">
+                                <strong>{{ c.full_name }}</strong>
+                                <span class="comment-date">{{ c.created_at }}</span>
+                                <p>{{ c.comment }}</p>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <p class="empty-state">No comments yet. Be the first!</p>
+                    {% endif %}
+                </div>
+            </div>
+        </aside>
+    </div>
+</div>
+{% endblock %}

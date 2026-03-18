@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ethio Heroes - Create Account</title>
+    
+    <!-- External CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/intl-tel-input@18.1.1/build/css/intlTelInput.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/signup.css') }}">
+</head>
+<body class="light-theme">
+    <!-- Theme Toggle -->
+    <div class="theme-controls">
+        <button id="mode-btn" title="Toggle Theme">
+            <i class="fas fa-moon"></i>
+        </button>
+    </div>
+
+    <div class="auth-wrapper">
+        <main class="auth-card">
+            <!-- Header Section -->
+            <header class="auth-header">
+                <a href="/" class="logo">
+                    <img src="{{ url_for('static', filename='images/ethio_heroes.png') }}" alt="Ethio Heroes Logo">
+                </a>
+                <h1>Create Account</h1>
+                <p>Join the league of Ethiopian Heroes and legends</p>
+            </header>
+
+            <!-- Sign Up Form -->
+            <form action="/signup" method="POST" class="auth-form" id="signup-form">
+                
+                <div class="input-group">
+                    <i class="fas fa-user input-icon"></i>
+                    <input type="text" name="full_name" placeholder="Full Name" required>
+                </div>
+
+                <div class="input-group">
+                    <i class="fas fa-envelope input-icon"></i>
+                    <input type="email" name="email_address" placeholder="Email Address" required>
+                </div>
+                
+                <div class="input-row">
+                    <div class="input-group">
+                        <select name="country" id="country" required>
+                            <!-- Populated by JS -->
+                        </select>
+                    </div>
+                    <div class="input-group phone-group">
+                        <input id="phone" type="tel" name="phone_number" required>
+                    </div>
+                </div>
+
+                <div class="input-group">
+                    <i class="fas fa-lock input-icon"></i>
+                    <input type="password" name="password" placeholder="Password" required>
+                </div>
+
+                <div class="input-group">
+                    <i class="fas fa-shield-alt input-icon"></i>
+                    <input type="password" name="confirm_password" placeholder="Confirm Password" required>
+                </div>
+                
+                <button type="submit" class="btn-primary">Sign Up Now</button>
+            </form>
+
+            <div class="divider">
+                <span>Or sign up with</span>
+            </div>
+
+            <!-- Social Logins -->
+            <div class="social-grid">
+                <a href="/login/google" class="btn-social">
+                    <img src="https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg" alt="Google">
+                    <span>Google</span>
+                </a>
+                <a href="/login/github" class="btn-social">
+                    <i class="fab fa-github"></i>
+                    <span>GitHub</span>
+                </a>
+            </div>
+
+            <footer class="auth-footer">
+                <p>Already a member? <a href="/login">Log In</a></p>
+            </footer>
+        </main>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/intl-tel-input@18.1.1/build/js/intlTelInput.min.js"></script>
+    <script>
+        // Theme Toggle Persistence
+        const btn = document.getElementById('mode-btn');
+        const body = document.body;
+
+        btn.onclick = () => {
+            body.classList.toggle('dark-theme');
+            const isDark = body.classList.contains('dark-theme');
+            btn.innerHTML = isDark ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
+            localStorage.setItem('theme', isDark ? 'dark' : 'light');
+        };
+
+        // Load saved theme
+        if (localStorage.getItem('theme') === 'dark') {
+            body.classList.add('dark-theme');
+            btn.innerHTML = '<i class="fas fa-sun"></i>';
+        }
+
+        // Phone Input Setup
+        const phoneInput = document.querySelector("#phone");
+        const countrySelect = document.getElementById("country");
+
+        const iti = window.intlTelInput(phoneInput, {
+            separateDialCode: true,
+            preferredCountries: ["et", "us", "gb"],
+            utilsScript: "https://cdn.jsdelivr.net/npm/intl-tel-input@18.1.1/build/js/utils.js"
+        });
+
+        // Populate Country Select
+        const countryData = window.intlTelInputGlobals.getCountryData();
+        countryData.forEach(country => {
+            const option = document.createElement("option");
+            option.value = country.iso2;
+            option.textContent = country.name;
+            countrySelect.appendChild(option);
+        });
+
+        // Sync logic
+        countrySelect.value = "et";
+        iti.setCountry("et");
+
+        countrySelect.addEventListener("change", () => iti.setCountry(countrySelect.value));
+        phoneInput.addEventListener("countrychange", () => {
+            countrySelect.value = iti.getSelectedCountryData().iso2;
+        });
+    </script>
+</body>
+</html>
