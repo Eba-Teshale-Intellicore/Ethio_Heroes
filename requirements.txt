@@ -10,7 +10,7 @@ MarkupSafe==3.0.3
 SQLAlchemy==2.0.48
 Flask-SQLAlchemy==3.1.1
 psycopg2-binary==2.9.7       # PostgreSQL driver for Neon
-pysqlite3-binary  # Optional SQLite fallback
+# pysqlite3-binary  # Optional SQLite fallback
 
 # Password hashing
 bcrypt==5.0.0
