@@ -23,7 +23,8 @@ CREATE TABLE IF NOT EXISTS Users(
 CREATE TABLE IF NOT EXISTS Eras(
     id SERIAL PRIMARY KEY,
     name TEXT NOT NULL,
-    description TEXT
+    description TEXT,
+    UNIQUE(name)
 );
 
 -- ==============================
@@ -67,12 +68,12 @@ CREATE TABLE IF NOT EXISTS HeroCategories(
 -- ==============================
 -- HERO IMAGES
 -- ==============================
-
 CREATE TABLE IF NOT EXISTS HeroImages(
     id SERIAL PRIMARY KEY,
-    hero_id INTEGER REFERENCES Heroes(id),
-    image_url TEXT,
-    caption TEXT
+    hero_id INTEGER NOT NULL REFERENCES Heroes(id) ON DELETE CASCADE,
+    image_url TEXT NOT NULL,
+    caption TEXT,
+    UNIQUE(hero_id, image_url)
 );
 -- ==============================
 -- ACHIEVEMENTS
@@ -93,7 +94,8 @@ CREATE TABLE IF NOT EXISTS Sources(
     id SERIAL PRIMARY KEY,
     hero_id INTEGER REFERENCES Heroes(id),
     source_title TEXT,
-    source_link TEXT
+    source_link TEXT,
+    UNIQUE (hero_id, source_title)
 );
 
 -- ==============================
@@ -150,28 +152,6 @@ INSERT INTO Categories (id, name, description) VALUES
 (10,'Inventor','Innovators and creators')
 ON CONFLICT (id) DO NOTHING;
 
-INSERT INTO HeroImages (hero_id, image_url, caption) VALUES
-(1, 'images/heroes/abebe_bikila_2.jpg', 'Abebe running barefoot in 1960 Rome Olympics'),
-(2, 'images/heroes/tirunesh_dibaba_2.jpg', 'Tirunesh winning gold medal'),
-(3, 'images/heroes/derartu_tulu_2.jpg', 'Derartu at Barcelona Olympics'),
-(4, 'images/heroes/haile_selassie_2.jpg', 'Haile Selassie addressing the nation'),
-(5, 'images/heroes/tewodros_ii_2.jpg', 'Emperor Tewodros II in military uniform'),
-(6, 'images/heroes/belay_zeleke_2.jpg', 'Belay Zeleke during resistance efforts'),
-(7, 'images/heroes/afework_tekle_2.jpg', 'Afework Tekle painting in studio'),
-(8, 'images/heroes/melaku_worede_2.jpg', 'Melaku Worede inspecting crop varieties'),
-(9, 'images/heroes/kitaw_ejigu_2.jpg', 'Kitaw Ejigu in aerospace lab'),
-(10, 'images/heroes/bogaletch_gebre_2.jpg', 'Bogaletch Gebre at advocacy event'),
-(11, 'images/heroes/aklilu_lemma_2.jpg', 'Aklilu Lemma demonstrating Endod plant use'),
-(12, 'images/heroes/mamo_wolde_2.jpg', 'Mamo Wolde winning marathon'),
-(13, 'images/heroes/gebisa_ejeta_2.jpg', 'Gebisa Ejeta in research field'),
-(14, 'images/heroes/kenenisa_bekele_2.jpg', 'Kenenisa Bekele at finish line'),
-(15, 'images/heroes/almaz_ayana_2.jpg', 'Almaz Ayana breaking world record'),
-(16, 'images/heroes/yohannes_iv_2.jpg', 'Emperor Yohannes IV in palace'),
-(17, 'images/heroes/menelik_ii_2.jpg', 'Menelik II at Battle of Adwa'),
-(18, 'images/heroes/taytu_betul_2.jpg', 'Empress Taytu during council meeting'),
-(19, 'images/heroes/shewareged_gedle_2.jpg', 'Shewareged leading patriots'),
-(20, 'images/heroes/empress_zewditu_2.jpg', 'Empress Zewditu during official ceremony')
-ON CONFLICT(hero_id) DO NOTHING;
 
 
 INSERT INTO Heroes
@@ -633,6 +613,28 @@ Dereje''s legacy is enduring. He continues to mentor, publish research, and advi
  'images/heroes/berhane_asfaw.jpg')
 ON CONFLICT (name, birth_year) DO NOTHING;
 
+INSERT INTO HeroImages (hero_id, image_url, caption) VALUES
+(1, 'images/heroes/abebe_bikila_2.jpg', 'Abebe running barefoot in 1960 Rome Olympics'),
+(2, 'images/heroes/tirunesh_dibaba_2.jpg', 'Tirunesh winning gold medal'),
+(3, 'images/heroes/derartu_tulu_2.jpg', 'Derartu at Barcelona Olympics'),
+(4, 'images/heroes/haile_selassie_2.jpg', 'Haile Selassie addressing the nation'),
+(5, 'images/heroes/tewodros_ii_2.jpg', 'Emperor Tewodros II in military uniform'),
+(6, 'images/heroes/belay_zeleke_2.jpg', 'Belay Zeleke during resistance efforts'),
+(7, 'images/heroes/afework_tekle_2.jpg', 'Afework Tekle painting in studio'),
+(8, 'images/heroes/melaku_worede_2.jpg', 'Melaku Worede inspecting crop varieties'),
+(9, 'images/heroes/kitaw_ejigu_2.jpg', 'Kitaw Ejigu in aerospace lab'),
+(10, 'images/heroes/bogaletch_gebre_2.jpg', 'Bogaletch Gebre at advocacy event'),
+(11, 'images/heroes/aklilu_lemma_2.jpg', 'Aklilu Lemma demonstrating Endod plant use'),
+(12, 'images/heroes/mamo_wolde_2.jpg', 'Mamo Wolde winning marathon'),
+(13, 'images/heroes/gebisa_ejeta_2.jpg', 'Gebisa Ejeta in research field'),
+(14, 'images/heroes/kenenisa_bekele_2.jpg', 'Kenenisa Bekele at finish line'),
+(15, 'images/heroes/almaz_ayana_2.jpg', 'Almaz Ayana breaking world record'),
+(16, 'images/heroes/yohannes_iv_2.jpg', 'Emperor Yohannes IV in palace'),
+(17, 'images/heroes/menelik_ii_2.jpg', 'Menelik II at Battle of Adwa'),
+(18, 'images/heroes/taytu_betul_2.jpg', 'Empress Taytu during council meeting'),
+(19, 'images/heroes/shewareged_gedle_2.jpg', 'Shewareged leading patriots'),
+(20, 'images/heroes/empress_zewditu_2.jpg', 'Empress Zewditu during official ceremony')
+ON CONFLICT (hero_id, image_url) DO NOTHING;
 
 INSERT INTO HeroCategories (hero_id, category_id) VALUES
 -- Original 20 Heroes
@@ -744,14 +746,28 @@ INSERT INTO Sources (hero_id, source_title, source_link) VALUES
 (48, 'Berhane Asfaw Contributions', 'https://en.wikipedia.org/wiki/Berhane_Asfaw')
 ON CONFLICT (hero_id, source_title) DO NOTHING;
 
-DROP TABLE IF EXISTS Comments CASCADE;
-DROP TABLE IF EXISTS HeroViews CASCADE;
-DROP TABLE IF EXISTS Favorites CASCADE;
-DROP TABLE IF EXISTS Sources CASCADE;
-DROP TABLE IF EXISTS Achievements CASCADE;
-DROP TABLE IF EXISTS HeroImages CASCADE;
-DROP TABLE IF EXISTS HeroCategories CASCADE;
-DROP TABLE IF EXISTS Heroes CASCADE;
-DROP TABLE IF EXISTS Categories CASCADE;
-DROP TABLE IF EXISTS Eras CASCADE;
-DROP TABLE IF EXISTS Users CASCADE;
+
+-- DROP TABLE IF EXISTS Comments CASCADE;
+-- DROP TABLE IF EXISTS HeroViews CASCADE;
+-- DROP TABLE IF EXISTS Favorites CASCADE;
+-- DROP TABLE IF EXISTS Sources CASCADE;
+-- DROP TABLE IF EXISTS Achievements CASCADE;
+-- DROP TABLE IF EXISTS HeroImages CASCADE;
+-- DROP TABLE IF EXISTS HeroCategories CASCADE;
+-- DROP TABLE IF EXISTS Heroes CASCADE;
+-- DROP TABLE IF EXISTS Categories CASCADE;
+-- DROP TABLE IF EXISTS Eras CASCADE;
+-- DROP TABLE IF EXISTS Users CASCADE;
+
+SELECT * FROM Users;
+SELECT * FROM Eras;
+SELECT * FROM Categories;
+SELECT * FROM Heroes
+LIMIT 20;
+SELECT * FROM HeroCategories;
+SELECT * FROM HeroImages;
+SELECT * FROM Achievements;
+SELECT * FROM Sources;
+SELECT * FROM Favorites;
+SELECT * FROM HeroViews;
+SELECT * FROM Comments;
