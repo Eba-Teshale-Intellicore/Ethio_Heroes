@@ -20,6 +20,7 @@ Flask-Bcrypt==1.0.1
 # OAuth / Social Login
 Authlib==1.2.1
 requests
+# requests==2.32.0
 
 # Utilities
 python-dotenv==1.0.0
