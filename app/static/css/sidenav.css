@@ -1,0 +1,170 @@
+/* sidenav.css */
+.sidenav {
+    position: fixed;
+    top: 0;
+    right: -400px; /* Hidden by default */
+    width: 350px;
+    height: 100vh;
+    z-index: 2000;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    display: flex;
+    flex-direction: column;
+    box-shadow: -10px 0 30px rgba(0, 0, 0, 0.1);
+}
+
+.sidenav.active {
+    right: 0;
+}
+
+/* Theme Awareness */
+.light-theme .sidenav { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(15px); }
+.dark-theme .sidenav { background: rgba(30, 41, 59, 0.95); backdrop-filter: blur(15px); }
+
+/* Overlay */
+.sidenav-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(4px);
+    z-index: 1999;
+    opacity: 0;
+    visibility: hidden;
+    transition: 0.3s;
+}
+
+.sidenav-overlay.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* Header Section */
+.sidenav-header {
+    padding: 40px 30px;
+    position: relative;
+    border-bottom: 1px solid rgba(128, 128, 128, 0.1);
+}
+
+.close-sidenav {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background: none;
+    border: none;
+    font-size: 1.2rem;
+    cursor: pointer;
+    color: var(--text-muted-light);
+    transition: 0.3s;
+}
+
+.close-sidenav:hover { color: #ef4444; transform: rotate(90deg); }
+
+.user-display {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 15px;
+}
+
+.avatar-large {
+    width: 80px;
+    height: 80px;
+    background: var(--primary-color);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    font-weight: 800;
+    box-shadow: 0 10px 20px rgba(37, 99, 235, 0.3);
+}
+
+.user-name {
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin-bottom: 4px;
+}
+
+.user-email {
+    font-size: 0.85rem;
+    color: var(--text-muted-light);
+}
+
+/* Links Section */
+.sidenav-content {
+    flex: 1;
+    padding: 20px 0;
+}
+
+.sidenav-links {
+    list-style: none;
+    padding: 0;
+}
+
+.sidenav-links li a {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    padding: 15px 30px;
+    text-decoration: none;
+    color: inherit;
+    font-weight: 500;
+    transition: 0.3s;
+}
+
+.sidenav-links li a i {
+    width: 20px;
+    font-size: 1.1rem;
+    color: var(--primary-color);
+}
+
+.sidenav-links li a:hover {
+    background: rgba(37, 99, 235, 0.08);
+    padding-left: 35px;
+}
+
+.sidenav-links .divider {
+    height: 1px;
+    background: rgba(128, 128, 128, 0.1);
+    margin: 15px 30px;
+}
+
+.logout-link { color: #ef4444 !important; }
+.logout-link i { color: #ef4444 !important; }
+
+/* Footer */
+.sidenav-footer {
+    padding: 30px;
+    text-align: center;
+    border-top: 1px solid rgba(128, 128, 128, 0.1);
+}
+
+.sidenav-footer img {
+    height: 30px;
+    opacity: 0.5;
+    margin-bottom: 10px;
+}
+
+.sidenav-footer p {
+    font-size: 0.75rem;
+    color: var(--text-muted-light);
+}
+
+/* Mobile Adjustments */
+@media (max-width: 400px) {
+    .sidenav { width: 100%; right: -100%; }
+}
+
+/* Make the trigger cursor pointer */
+.user-profile-trigger {
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+.user-profile-trigger:hover {
+    transform: scale(1.05);
+}
