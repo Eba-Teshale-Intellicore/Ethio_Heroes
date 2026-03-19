@@ -10,10 +10,8 @@ main_bp = Blueprint('main', __name__)
 # ----- Database connection for Neon/PostgreSQL -----
 def get_db():
     conn = psycopg2.connect(
-        host=os.getenv("DB_HOST", "localhost"),
-        dbname=os.getenv("DB_NAME", "ethio_heroes"),
-        user=os.getenv("DB_USER", "postgres"),
-        password=os.getenv("DB_PASS", "password"),
+        os.environ.get("DATABASE_URL"),
+        sslmode="require",
         cursor_factory=RealDictCursor
     )
     return conn
