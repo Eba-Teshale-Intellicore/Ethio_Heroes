@@ -52,11 +52,11 @@ def signup():
     confirm_password = request.form.get("confirm_password")
 
     if len(password) < 8:
-        flash("Password must be at least 8 characters", "error")
+        # flash("Password must be at least 8 characters", "error")
         return redirect(url_for('auth.signup'))
 
     if password != confirm_password:
-        flash("Passwords do not match", "error")
+        # flash("Passwords do not match", "error")
         return redirect(url_for('auth.signup'))
 
     hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
@@ -72,14 +72,14 @@ def signup():
             conn.commit()
     except psycopg2.IntegrityError:
         conn.rollback()
-        flash("Email already exists", "error")
+        # flash("Email already exists", "error")
         return redirect(url_for('auth.signup'))
     finally:
         conn.close()
 
     session["email_address"] = email_address
     session["full_name"] = full_name
-    flash("Registered Successfully!", "success")
+    # flash("Registered Successfully!", "success")
     return redirect(url_for('main.home'))
 
 # ----- LOGIN -----
@@ -98,16 +98,16 @@ def login():
     conn.close()
 
     if not user:
-        flash("Invalid email", "error")
+        # flash("Invalid email", "error")
         return redirect(url_for('auth.login'))
 
     if user["password"] and bcrypt.checkpw(password.encode('utf-8'), bytes(user["password"])):
         session["email_address"] = email
         session["full_name"] = user["full_name"]
-        flash("Logged in successfully!", "success")
+        # flash("Logged in successfully!", "success")
         return redirect(url_for('main.home'))
     else:
-        flash("Invalid password", "error")
+        # flash("Invalid password", "error")
         return redirect(url_for('auth.login'))
 
 # ----- GOOGLE LOGIN -----
@@ -157,7 +157,7 @@ def google_authorize():
         "country": country
     })
 
-    flash("Logged in with Google!", "success")
+    # flash("Logged in with Google!", "success")
     return redirect(url_for('main.home'))
 
 # ----- GITHUB LOGIN -----
@@ -175,12 +175,12 @@ def github_authorize():
     username = profile["login"]
     session["email_address"] = username
     session["full_name"] = username
-    flash("Logged in with GitHub!", "success")
+    # flash("Logged in with GitHub!", "success")
     return redirect(url_for('main.home'))
 
 # ----- LOGOUT -----
 @auth_bp.route("/logout")
 def logout():
     session.clear()
-    flash("Successfully logged out", "success")
+    # flash("Successfully logged out", "success")
     return redirect(url_for("main.home"))
