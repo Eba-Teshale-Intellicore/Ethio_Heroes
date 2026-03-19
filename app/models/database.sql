@@ -743,3 +743,15 @@ INSERT INTO Sources (hero_id, source_title, source_link) VALUES
 (47, 'Dr. Brook Lakew Profile', 'https://en.wikipedia.org/wiki/Brook_Lakew'),
 (48, 'Berhane Asfaw Contributions', 'https://en.wikipedia.org/wiki/Berhane_Asfaw')
 ON CONFLICT (hero_id, source_title) DO NOTHING;
+
+DROP TABLE IF EXISTS Comments CASCADE;
+DROP TABLE IF EXISTS HeroViews CASCADE;
+DROP TABLE IF EXISTS Favorites CASCADE;
+DROP TABLE IF EXISTS Sources CASCADE;
+DROP TABLE IF EXISTS Achievements CASCADE;
+DROP TABLE IF EXISTS HeroImages CASCADE;
+DROP TABLE IF EXISTS HeroCategories CASCADE;
+DROP TABLE IF EXISTS Heroes CASCADE;
+DROP TABLE IF EXISTS Categories CASCADE;
+DROP TABLE IF EXISTS Eras CASCADE;
+DROP TABLE IF EXISTS Users CASCADE;
