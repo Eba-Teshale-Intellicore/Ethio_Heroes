@@ -6,9 +6,9 @@ import bcrypt
 from app.extensions import oauth
 import secrets
 
-auth_bp = Blueprint('auth', __name__)
+auth_bp = Blueprint("auth", __name__)
 
-# ---------------- DB ----------------
+# ================= DB =================
 def get_db():
     return psycopg2.connect(
         os.environ.get("DATABASE_URL"),
@@ -16,27 +16,28 @@ def get_db():
         cursor_factory=RealDictCursor
     )
 
-# ---------------- GOOGLE ----------------
+# ================= OAUTH =================
 google = oauth.register(
-    name='google',
+    name="google",
     client_id=os.environ.get("GOOGLE_CLIENT_ID"),
     client_secret=os.environ.get("GOOGLE_CLIENT_SECRET"),
-    server_metadata_url='https://accounts.google.com/.well-known/openid-configuration',
-    client_kwargs={'scope': 'openid email profile'}
+    server_metadata_url="https://accounts.google.com/.well-known/openid-configuration",
+    client_kwargs={"scope": "openid email profile"}
 )
 
-# ---------------- GITHUB ----------------
 github = oauth.register(
-    name='github',
+    name="github",
     client_id=os.environ.get("GITHUB_CLIENT_ID"),
     client_secret=os.environ.get("GITHUB_CLIENT_SECRET"),
-    access_token_url='https://github.com/login/oauth/access_token',
-    authorize_url='https://github.com/login/oauth/authorize',
-    api_base_url='https://api.github.com/',
-    client_kwargs={'scope': 'user:email'}
+    access_token_url="https://github.com/login/oauth/access_token",
+    authorize_url="https://github.com/login/oauth/authorize",
+    api_base_url="https://api.github.com/",
+    client_kwargs={"scope": "user:email"}
 )
 
-# ================= SIGNUP API =================
+# =========================================================
+# SIGNUP
+# =========================================================
 @auth_bp.route("/signup", methods=["POST"])
 def signup():
     data = request.get_json()
@@ -48,36 +49,65 @@ def signup():
     password = data.get("password")
     confirm = data.get("confirm_password")
 
+    if not all([full_name, email, password]):
+        return jsonify({"message": "Missing required fields"}), 400
+
     if len(password) < 8:
-        return jsonify({"message": "Password too short"}), 400
+        return jsonify({"message": "Password must be at least 8 characters"}), 400
 
     if password != confirm:
         return jsonify({"message": "Passwords do not match"}), 400
 
-    hashed = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())
+    hashed_password = bcrypt.hashpw(
+        password.encode("utf-8"),
+        bcrypt.gensalt()
+    ).decode("utf-8")
 
     conn = get_db()
     try:
         with conn.cursor() as cur:
-            cur.execute(
-                """INSERT INTO Users(full_name,email_address,country,phone_number,password,login_type)
-                   VALUES (%s,%s,%s,%s,%s,%s)""",
-                (full_name, email, country, phone, hashed, "local")
-            )
+            cur.execute("""
+                INSERT INTO Users (
+                    full_name,
+                    email_address,
+                    country,
+                    phone_number,
+                    password,
+                    login_type
+                )
+                VALUES (%s,%s,%s,%s,%s,%s)
+            """, (
+                full_name,
+                email,
+                country,
+                phone,
+                hashed_password,
+                "local"
+            ))
             conn.commit()
+
     except psycopg2.IntegrityError:
         conn.rollback()
         return jsonify({"message": "Email already exists"}), 409
+
     finally:
         conn.close()
 
     session["email"] = email
     session["name"] = full_name
 
-    return jsonify({"message": "Signup successful"}), 201
+    return jsonify({
+        "message": "Signup successful",
+        "user": {
+            "email": email,
+            "name": full_name
+        }
+    }), 201
 
 
-# ================= LOGIN API =================
+# =========================================================
+# LOGIN
+# =========================================================
 @auth_bp.route("/login", methods=["POST"])
 def login():
     data = request.get_json()
@@ -87,33 +117,45 @@ def login():
 
     conn = get_db()
     with conn.cursor() as cur:
-        cur.execute("SELECT * FROM Users WHERE email_address=%s", (email,))
+        cur.execute("""
+            SELECT * FROM Users WHERE email_address=%s
+        """, (email,))
         user = cur.fetchone()
     conn.close()
 
     if not user:
         return jsonify({"message": "Invalid email"}), 401
 
-    if bcrypt.checkpw(password.encode('utf-8'), bytes(user["password"])):
-        session["email"] = email
+    stored_password = user["password"]
+
+    if stored_password and bcrypt.checkpw(
+        password.encode("utf-8"),
+        stored_password.encode("utf-8")
+    ):
+        session["email"] = user["email_address"]
         session["name"] = user["full_name"]
 
         return jsonify({
             "message": "Login successful",
             "user": {
-                "email": email,
-                "name": user["full_name"]
+                "email": user["email_address"],
+                "name": user["full_name"],
+                "avatar": user["avatar"],
+                "country": user["country"]
             }
         }), 200
 
     return jsonify({"message": "Invalid password"}), 401
 
 
-# ================= GOOGLE LOGIN =================
+# =========================================================
+# GOOGLE LOGIN
+# =========================================================
 @auth_bp.route("/login/google")
 def login_google():
     nonce = secrets.token_urlsafe(16)
     session["nonce"] = nonce
+
     redirect_uri = url_for("auth.google_callback", _external=True)
     return google.authorize_redirect(redirect_uri, nonce=nonce)
 
@@ -125,18 +167,34 @@ def google_callback():
 
     email = user_info["email"]
     name = user_info["name"]
+    avatar = user_info.get("picture")
 
     conn = get_db()
     with conn.cursor() as cur:
-        cur.execute("SELECT * FROM Users WHERE email_address=%s", (email,))
+        cur.execute("""
+            SELECT * FROM Users WHERE email_address=%s
+        """, (email,))
         user = cur.fetchone()
 
         if not user:
-            cur.execute(
-                """INSERT INTO Users(full_name,email_address,login_type)
-                   VALUES (%s,%s,%s)""",
-                (name, email, "google")
-            )
+            cur.execute("""
+                INSERT INTO Users (
+                    full_name,
+                    email_address,
+                    login_type,
+                    avatar,
+                    is_verified
+                )
+                VALUES (%s,%s,%s,%s,%s)
+            """, (name, email, "google", avatar, True))
+
+        else:
+            cur.execute("""
+                UPDATE Users
+                SET full_name=%s, avatar=%s
+                WHERE email_address=%s
+            """, (name, avatar, email))
+
         conn.commit()
     conn.close()
 
@@ -146,7 +204,9 @@ def google_callback():
     return redirect("http://localhost:3000/dashboard")
 
 
-# ================= GITHUB LOGIN =================
+# =========================================================
+# GITHUB LOGIN
+# =========================================================
 @auth_bp.route("/login/github")
 def github_login():
     redirect_uri = url_for("auth.github_callback", _external=True)
@@ -166,7 +226,9 @@ def github_callback():
     return redirect("http://localhost:3000/dashboard")
 
 
-# ================= LOGOUT =================
+# =========================================================
+# LOGOUT
+# =========================================================
 @auth_bp.route("/logout")
 def logout():
     session.clear()
