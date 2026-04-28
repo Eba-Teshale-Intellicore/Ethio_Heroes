@@ -201,7 +201,7 @@ def google_callback():
     session["email"] = email
     session["name"] = name
 
-    return redirect("http://localhost:3000/dashboard")
+    return redirect("http://localhost:3000/")
 
 
 # =========================================================
@@ -223,7 +223,7 @@ def github_callback():
     session["email"] = username
     session["name"] = username
 
-    return redirect("http://localhost:3000/dashboard")
+    return redirect("http://localhost:3000/")
 
 
 # =========================================================
