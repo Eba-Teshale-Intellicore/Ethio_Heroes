@@ -4,6 +4,7 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 import os
 import pycountry
+from flask import jsonify
 
 main_bp = Blueprint('main', __name__)
 
@@ -17,19 +18,14 @@ def get_db():
     return conn
 
 # ------------------- Home Page -------------------
-@main_bp.route("/")
-def home():
+@main_bp.route("/api/heroes")
+def get_heroes():
     page = int(request.args.get("page", 1))
     per_page = 9
     offset = (page - 1) * per_page
 
     conn = get_db()
     with conn.cursor() as cur:
-        # total heroes
-        cur.execute("SELECT COUNT(*) AS total FROM Heroes")
-        total_heroes = cur.fetchone()["total"]
-        total_pages = (total_heroes + per_page - 1) // per_page
-
         cur.execute("""
             SELECT DISTINCT
                 h.id,
@@ -45,27 +41,12 @@ def home():
             ORDER BY h.id DESC
             LIMIT %s OFFSET %s
         """, (per_page, offset))
+
         heroes = cur.fetchall()
-
-        cur.execute("SELECT * FROM Categories")
-        categories = cur.fetchall()
-
-        cur.execute("SELECT * FROM Eras")
-        eras = cur.fetchall()
 
     conn.close()
 
-    return render_template(
-        "home.html",
-        heroes=heroes,
-        categories=categories,
-        eras=eras,
-        query="",
-        selected_category="",
-        selected_era="",
-        page=page,
-        total_pages=total_pages
-    )
+    return jsonify(heroes)
 
 # ------------------- Profile -------------------
 @main_bp.route("/profile")
