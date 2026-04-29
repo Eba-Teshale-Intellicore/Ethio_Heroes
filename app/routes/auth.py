@@ -6,6 +6,7 @@ import bcrypt
 from app.extensions import oauth
 import secrets
 
+
 auth_bp = Blueprint("auth", __name__)
 
 # ================= DB =================
@@ -165,9 +166,9 @@ def google_callback():
     token = google.authorize_access_token()
     user_info = google.parse_id_token(token)
 
-    email = user_info["email"]
-    name = user_info["name"]
-    avatar = user_info.get("picture")
+    email = user_info.get("email")
+    name = user_info.get("name", "User")
+    avatar = user_info.get("picture", "")
 
     conn = get_db()
     with conn.cursor() as cur:
