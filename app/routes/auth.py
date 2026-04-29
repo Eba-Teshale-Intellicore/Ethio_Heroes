@@ -102,7 +102,7 @@ def signup():
     session["name"] = full_name
 
     return jsonify({
-        "message": "Signup successful",
+        "message": "Signup successfully",
         "user": {
             "email": email,
             "name": full_name
