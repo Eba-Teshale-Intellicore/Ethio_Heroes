@@ -171,52 +171,23 @@ def login_google():
 
 @auth_bp.route("/login/google/callback")
 def google_callback():
-    token = google.authorize_access_token()
-    user_info = google.parse_id_token(token)
-
-    email = user_info.get("email")
-    name = user_info.get("name", "User")
-    avatar = user_info.get("picture", "")
-
     try:
-        conn = get_db()
+        token = google.authorize_access_token()
+
+        # safer method (IMPORTANT)
+        resp = google.get("userinfo")
+        user_info = resp.json()
+
+        email = user_info.get("email")
+        name = user_info.get("name", "User")
+        avatar = user_info.get("picture", "")
+
+        if not email:
+            return "Google did not return email", 400
+
     except Exception as e:
-        print("DB ERROR:", e)
-        return "Database error", 500
-    with conn.cursor() as cur:
-        cur.execute("""
-            SELECT * FROM Users WHERE email_address=%s
-        """, (email,))
-        user = cur.fetchone()
-
-        if not user:
-            cur.execute("""
-                INSERT INTO Users (
-                    full_name,
-                    email_address,
-                    login_type,
-                    avatar,
-                    is_verified
-                )
-                VALUES (%s,%s,%s,%s,%s)
-            """, (name, email, "google", avatar, True))
-
-        else:
-            cur.execute("""
-                UPDATE Users
-                SET full_name=%s, avatar=%s
-                WHERE email_address=%s
-            """, (name, avatar, email))
-
-        conn.commit()
-    conn.close()
-
-    session["email"] = email
-    session["name"] = name
-
-    return redirect("https://ethio-frontend.vercel.app/")
-
-
+        print("GOOGLE AUTH ERROR:", e)
+        return "OAuth failed", 500
 # =========================================================
 # GITHUB LOGIN
 # =========================================================
