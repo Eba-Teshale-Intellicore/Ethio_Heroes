@@ -174,7 +174,6 @@ def google_callback():
     try:
         token = google.authorize_access_token()
 
-        # safer method (IMPORTANT)
         resp = google.get("userinfo")
         user_info = resp.json()
 
@@ -184,6 +183,43 @@ def google_callback():
 
         if not email:
             return "Google did not return email", 400
+
+        # ✅ DATABASE PART (IMPORTANT)
+        conn = get_db()
+        with conn.cursor() as cur:
+            cur.execute("""
+                SELECT * FROM Users WHERE email_address=%s
+            """, (email,))
+            user = cur.fetchone()
+
+            if not user:
+                cur.execute("""
+                    INSERT INTO Users (
+                        full_name,
+                        email_address,
+                        login_type,
+                        avatar,
+                        is_verified
+                    )
+                    VALUES (%s,%s,%s,%s,%s)
+                """, (name, email, "google", avatar, True))
+
+            else:
+                cur.execute("""
+                    UPDATE Users
+                    SET full_name=%s, avatar=%s
+                    WHERE email_address=%s
+                """, (name, avatar, email))
+
+            conn.commit()
+            conn.close()
+
+        # ✅ SESSION (VERY IMPORTANT)
+        session["email"] = email
+        session["name"] = name
+
+        # ✅ REDIRECT TO FRONTEND
+        return redirect("https://ethio-frontend.vercel.app/")
 
     except Exception as e:
         print("GOOGLE AUTH ERROR:", e)
