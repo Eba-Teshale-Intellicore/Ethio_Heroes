@@ -64,7 +64,11 @@ def signup():
         bcrypt.gensalt()
     ).decode("utf-8")
 
-    conn = get_db()
+    try:
+        conn = get_db()
+    except Exception as e:
+        print("DB ERROR:", e)
+        return "Database error", 500
     try:
         with conn.cursor() as cur:
             cur.execute("""
@@ -116,7 +120,11 @@ def login():
     email = data.get("email")
     password = data.get("password")
 
-    conn = get_db()
+    try:
+        conn = get_db()
+    except Exception as e:
+        print("DB ERROR:", e)
+        return "Database error", 500
     with conn.cursor() as cur:
         cur.execute("""
             SELECT * FROM Users WHERE email_address=%s
@@ -170,7 +178,11 @@ def google_callback():
     name = user_info.get("name", "User")
     avatar = user_info.get("picture", "")
 
-    conn = get_db()
+    try:
+        conn = get_db()
+    except Exception as e:
+        print("DB ERROR:", e)
+        return "Database error", 500
     with conn.cursor() as cur:
         cur.execute("""
             SELECT * FROM Users WHERE email_address=%s
