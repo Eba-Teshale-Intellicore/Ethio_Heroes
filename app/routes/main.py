@@ -47,8 +47,9 @@ def get_heroes():
             LEFT JOIN Eras e ON h.era_id = e.id
             LEFT JOIN HeroCategories hc ON h.id = hc.hero_id
             LEFT JOIN Categories c ON hc.category_id = c.id
-            LIMIT %s OFFSET %s
-        """, (per_page, offset))
+            ORDER BY RANDOM()
+            LIMIT %s
+        """, (per_page,))
 
         heroes = cur.fetchall()
 
