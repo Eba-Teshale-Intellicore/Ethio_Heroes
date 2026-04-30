@@ -18,14 +18,21 @@ def get_db():
     return conn
 
 # ------------------- Home Page -------------------
+import random
+
 @main_bp.route("/api/heroes")
 def get_heroes():
-    page = int(request.args.get("page", 1))
     per_page = 7
-    offset = (page - 1) * per_page
 
     conn = get_db()
     with conn.cursor() as cur:
+
+        cur.execute("SELECT COUNT(*) FROM Heroes")
+        total = cur.fetchone()["count"]
+
+        max_offset = max(total - per_page, 0)
+        offset = random.randint(0, max_offset)
+
         cur.execute("""
             SELECT DISTINCT
                 h.id,
@@ -45,7 +52,6 @@ def get_heroes():
         heroes = cur.fetchall()
 
     conn.close()
-
     return jsonify(heroes)
 
 # ------------------- Profile -------------------
