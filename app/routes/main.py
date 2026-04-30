@@ -20,12 +20,21 @@ def get_db():
 # ------------------- Home Page -------------------
 @main_bp.route("/api/heroes")
 def get_heroes():
-    page = int(request.args.get("page", 1))
     per_page = 7
-    offset = (page - 1) * per_page
 
     conn = get_db()
     with conn.cursor() as cur:
+
+        # 1. Get total count
+        cur.execute("SELECT COUNT(*) FROM Heroes")
+        total = cur.fetchone()["count"]
+
+        # 2. Generate safe random offset
+        import random
+        max_offset = max(0, total - per_page)
+        offset = random.randint(0, max_offset)
+
+        # 3. Fetch random slice
         cur.execute("""
             SELECT DISTINCT
                 h.id,
@@ -38,7 +47,6 @@ def get_heroes():
             LEFT JOIN Eras e ON h.era_id = e.id
             LEFT JOIN HeroCategories hc ON h.id = hc.hero_id
             LEFT JOIN Categories c ON hc.category_id = c.id
-            ORDER BY h.id DESC
             LIMIT %s OFFSET %s
         """, (per_page, offset))
 
