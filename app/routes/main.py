@@ -21,7 +21,7 @@ def get_db():
 @main_bp.route("/api/heroes")
 def get_heroes():
     page = int(request.args.get("page", 1))
-    per_page = 7
+    per_page = 5
     offset = (page - 1) * per_page
 
     conn = get_db()
