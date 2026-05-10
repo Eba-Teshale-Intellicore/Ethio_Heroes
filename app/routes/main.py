@@ -49,7 +49,7 @@ def get_heroes():
 
     # ------------------- Director Page -------------------
 @main_bp.route("/api/director")
-def get_heroes():
+def director_heroes():
 
     conn = get_db()
     with conn.cursor() as cur:
