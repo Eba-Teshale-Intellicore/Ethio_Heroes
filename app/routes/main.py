@@ -237,125 +237,139 @@ def edit_profile():
 
 
 
-# ------------------- Hero Detail -------------------
-@main_bp.route("/api/hero/<slug>")
-def hero_detail(slug):
+
     # if "email_address" not in session:
     #     return redirect(url_for("auth.login"))
 
     # email = session["email_address"]
     
+# ------------------- Hero Detail -------------------
+@main_bp.route("/api/hero/<slug>")
+def hero_detail(slug):
+
     conn = get_db()
 
-    with conn.cursor(cursor_factory=RealDictCursor) as cur:
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
 
-        # Hero
-        cur.execute("""
-            SELECT h.*, e.name AS era_name
-            FROM Heroes h
-            LEFT JOIN Eras e
-                ON h.era_id = e.id
-            WHERE h.slug = %s
-        """, (slug,))
+            # ───────────────────────── HERO ─────────────────────────
+            cur.execute("""
+                SELECT h.*, e.name AS era_name
+                FROM Heroes h
+                LEFT JOIN Eras e ON h.era_id = e.id
+                WHERE h.slug = %s
+            """, (slug,))
 
-        hero = cur.fetchone()
+            hero = cur.fetchone()
 
-        if not hero:
-            return jsonify({"error": "Hero not found"}), 404
+            if not hero:
+                return jsonify({"error": "Hero not found"}), 404
 
-        # Categories
-        cur.execute("""
-            SELECT c.name
-            FROM Categories c
-            JOIN HeroCategories hc
-                ON c.id = hc.category_id
-            WHERE hc.hero_id = %s
-        """, (hero["id"],))
 
-        categories = [c["name"] for c in cur.fetchall()]
-        categories = tuple(categories)  # FIX
+            # ───────────────────────── CATEGORIES ─────────────────────────
+            cur.execute("""
+                SELECT c.name
+                FROM Categories c
+                JOIN HeroCategories hc ON c.id = hc.category_id
+                WHERE hc.hero_id = %s
+            """, (hero["id"],))
 
-        # Related Heroes
-        cur.execute("""
-            SELECT DISTINCT
-                h.id,
-                h.name,
-                h.slug,
-                h.hero_image,
-                h.short_description,
-                e.name AS era_name
-            FROM Heroes h
-            LEFT JOIN Eras e
-                ON h.era_id = e.id
-            LEFT JOIN HeroCategories hc
-                ON h.id = hc.hero_id
-            LEFT JOIN Categories c
-                ON hc.category_id = c.id
-            WHERE h.id != %s
-            AND (
-                h.era_id = %s
-                OR c.name = ANY(%s::text[])
-            )
-            ORDER BY RANDOM()
-            LIMIT 5
-        """, (
-            hero["id"],
-            hero["era_id"],
-            categories
-        ))
+            categories = [c["name"] for c in cur.fetchall()]
 
-        related_heroes = cur.fetchall()
+            # IMPORTANT FIX: prevent empty array crash in SQL ANY()
+            if not categories:
+                categories = ["__none__"]
 
-        # Images
-        cur.execute("""
-            SELECT *
-            FROM HeroImages
-            WHERE hero_id = %s
-        """, (hero["id"],))
-        images = cur.fetchall()
 
-        # Achievements
-        cur.execute("""
-            SELECT *
-            FROM Achievements
-            WHERE hero_id = %s
-            ORDER BY year ASC
-        """, (hero["id"],))
-        achievements = cur.fetchall()
+            # ───────────────────────── RELATED HEROES ─────────────────────────
+            cur.execute("""
+                SELECT DISTINCT
+                    h.id,
+                    h.name,
+                    h.slug,
+                    h.hero_image,
+                    h.short_description,
+                    e.name AS era_name
+                FROM Heroes h
+                LEFT JOIN Eras e ON h.era_id = e.id
+                LEFT JOIN HeroCategories hc ON h.id = hc.hero_id
+                LEFT JOIN Categories c ON hc.category_id = c.id
+                WHERE h.id != %s
+                AND (
+                    h.era_id = %s
+                    OR c.name = ANY(%s::text[])
+                )
+                ORDER BY RANDOM()
+                LIMIT 5
+            """, (
+                hero["id"],
+                hero["era_id"],
+                categories
+            ))
 
-        # Sources
-        cur.execute("""
-            SELECT *
-            FROM Sources
-            WHERE hero_id = %s
-        """, (hero["id"],))
-        sources = cur.fetchall()
+            related_heroes = cur.fetchall()
 
-        # Comments
-        cur.execute("""
-            SELECT
-                c.comment,
-                u.full_name,
-                u.avatar,
-                c.created_at
-            FROM Comments c
-            JOIN Users u ON c.user_id = u.id
-            WHERE c.hero_id = %s
-            ORDER BY c.created_at DESC
-        """, (hero["id"],))
-        comments = cur.fetchall()
 
-    conn.close()
+            # ───────────────────────── IMAGES ─────────────────────────
+            cur.execute("""
+                SELECT *
+                FROM HeroImages
+                WHERE hero_id = %s
+            """, (hero["id"],))
+            images = cur.fetchall()
 
-    return jsonify({
-        "hero": hero,
-        "categories": categories,
-        "images": images,
-        "achievements": achievements,
-        "sources": sources,
-        "comments": comments,
-        "related_heroes": related_heroes
-    })
+
+            # ───────────────────────── ACHIEVEMENTS ─────────────────────────
+            cur.execute("""
+                SELECT *
+                FROM Achievements
+                WHERE hero_id = %s
+                ORDER BY year ASC
+            """, (hero["id"],))
+            achievements = cur.fetchall()
+
+
+            # ───────────────────────── SOURCES ─────────────────────────
+            cur.execute("""
+                SELECT *
+                FROM Sources
+                WHERE hero_id = %s
+            """, (hero["id"],))
+            sources = cur.fetchall()
+
+
+            # ───────────────────────── COMMENTS ─────────────────────────
+            cur.execute("""
+                SELECT
+                    c.comment,
+                    u.full_name,
+                    u.avatar,
+                    c.created_at
+                FROM Comments c
+                JOIN Users u ON c.user_id = u.id
+                WHERE c.hero_id = %s
+                ORDER BY c.created_at DESC
+            """, (hero["id"],))
+
+            comments = cur.fetchall()
+
+
+        return jsonify({
+            "hero": hero,
+            "categories": categories,
+            "images": images,
+            "achievements": achievements,
+            "sources": sources,
+            "comments": comments,
+            "related_heroes": related_heroes
+        })
+
+    except Exception as e:
+        print("Hero API error:", e)
+        return jsonify({"error": "Internal server error"}), 500
+
+    finally:
+        conn.close()
 
     # return render_template(
     #     "detail.html",
