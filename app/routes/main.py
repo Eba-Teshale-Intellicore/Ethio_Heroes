@@ -293,6 +293,7 @@ def hero_detail(hero_id):
                 h.id,
                 h.name,
                 h.hero_image,
+                h.short_description,
                 e.name AS era_name
             FROM Heroes h
             LEFT JOIN Eras e
