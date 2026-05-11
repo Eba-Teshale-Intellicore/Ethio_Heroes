@@ -120,6 +120,7 @@ def search():
         sql = """
                 SELECT
                     h.id,
+                    h.slug,
                     h.name,
                     h.hero_image,
                     h.short_description,
