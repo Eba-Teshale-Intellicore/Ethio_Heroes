@@ -326,7 +326,7 @@ def hero_detail(slug):
 
         related_heroes = cur.fetchall()
 
-        # Images
+        # Imagesss
         cur.execute("""
             SELECT *
             FROM HeroImages
