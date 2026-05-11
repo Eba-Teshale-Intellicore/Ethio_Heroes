@@ -83,7 +83,7 @@ def search():
     category = request.args.get("category", "")
     era = request.args.get("era", "")
     page = int(request.args.get("page", 1))
-    per_page = 9
+    per_page = 20
     offset = (page - 1) * per_page
 
     conn = get_db()
