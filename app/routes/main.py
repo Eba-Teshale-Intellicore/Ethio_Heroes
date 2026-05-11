@@ -6,6 +6,7 @@ import os
 import pycountry
 from flask import jsonify
 
+
 main_bp = Blueprint('main', __name__)
 
 # ----- Database connection for Neon/PostgreSQL -----
@@ -79,65 +80,44 @@ def director_heroes():
 # ------------------- Search -------------------
 @main_bp.route("/api/search")
 def search():
+
     query = request.args.get("q", "")
     category = request.args.get("category", "")
     era = request.args.get("era", "")
     page = int(request.args.get("page", 1))
+
     per_page = 35
     offset = (page - 1) * per_page
 
     conn = get_db()
-    with conn.cursor() as cur:
-        # Count total filtered heroes
-        count_sql = """
-            SELECT COUNT(DISTINCT h.id) AS total
+
+    with conn.cursor(cursor_factory=RealDictCursor) as cur:
+
+        sql = """
+            SELECT
+                h.id,
+                h.slug,
+                h.name,
+                h.hero_image,
+                h.short_description,
+                e.name AS era_name,
+                STRING_AGG(c.name, ', ') AS categories
             FROM Heroes h
             LEFT JOIN Eras e ON h.era_id = e.id
             LEFT JOIN HeroCategories hc ON h.id = hc.hero_id
             LEFT JOIN Categories c ON hc.category_id = c.id
             WHERE 1=1
         """
-        count_params = []
 
-        if query:
-            count_sql += " AND (h.name ILIKE %s OR h.short_description ILIKE %s OR h.full_biography ILIKE %s)"
-            term = f"%{query}%"
-            count_params += [term, term, term]
-
-        if category:
-            count_sql += " AND c.name = %s"
-            count_params.append(category)
-
-        if era:
-            count_sql += " AND e.name = %s"
-            count_params.append(era)
-
-        cur.execute(count_sql, count_params)
-        total_heroes = cur.fetchone()["total"]
-        total_pages = (total_heroes + per_page - 1) // per_page
-
-        # Fetch filtered heroes
-        sql = """
-                SELECT
-                    h.id,
-                    h.slug,
-                    h.name,
-                    h.hero_image,
-                    h.short_description,
-                    e.name AS era_name,
-                    STRING_AGG(c.name, ', ') AS categories
-                FROM Heroes h
-                LEFT JOIN Eras e ON h.era_id = e.id
-                LEFT JOIN HeroCategories hc ON h.id = hc.hero_id
-                LEFT JOIN Categories c ON hc.category_id = c.id
-                WHERE 1=1
-            """
         params = []
 
-        term = f"%{query}%"
-
         if query:
-            sql += " AND (h.name ILIKE %s OR h.short_description ILIKE %s OR h.full_biography ILIKE %s)"
+            sql += """
+                AND (h.name ILIKE %s
+                OR h.short_description ILIKE %s
+                OR h.full_biography ILIKE %s)
+            """
+            term = f"%{query}%"
             params += [term, term, term]
 
         if category:
@@ -148,8 +128,12 @@ def search():
             sql += " AND e.name = %s"
             params.append(era)
 
-        sql += " GROUP BY h.id, e.name"
-        sql += " ORDER BY h.id DESC LIMIT %s OFFSET %s"
+        sql += """
+            GROUP BY h.id, e.name
+            ORDER BY h.id DESC
+            LIMIT %s OFFSET %s
+        """
+
         params += [per_page, offset]
 
         cur.execute(sql, params)
@@ -157,16 +141,16 @@ def search():
 
         cur.execute("SELECT * FROM Categories")
         categories = cur.fetchall()
+
         cur.execute("SELECT * FROM Eras")
         eras = cur.fetchall()
 
-
     conn.close()
+
     return jsonify({
-    "heroes": heroes,
-    "categories": categories,
-    "eras": eras,
-    "total_pages": total_pages
+        "heroes": heroes,
+        "categories": categories,
+        "eras": eras
     })
     # return render_template(
     #     "home.html",
@@ -260,10 +244,10 @@ def hero_detail(slug):
     #     return redirect(url_for("auth.login"))
 
     # email = session["email_address"]
-
+    
     conn = get_db()
 
-    with conn.cursor() as cur:
+    with conn.cursor(cursor_factory=RealDictCursor) as cur:
 
         # Hero
         cur.execute("""
@@ -289,6 +273,7 @@ def hero_detail(slug):
         """, (hero["id"],))
 
         categories = [c["name"] for c in cur.fetchall()]
+        categories = tuple(categories)  # FIX
 
         # Related Heroes
         cur.execute("""
@@ -300,24 +285,18 @@ def hero_detail(slug):
                 h.short_description,
                 e.name AS era_name
             FROM Heroes h
-
             LEFT JOIN Eras e
                 ON h.era_id = e.id
-
             LEFT JOIN HeroCategories hc
                 ON h.id = hc.hero_id
-
             LEFT JOIN Categories c
                 ON hc.category_id = c.id
-
             WHERE h.id != %s
             AND (
                 h.era_id = %s
-                OR c.name = ANY(%s)
+                OR c.name = ANY(%s::text[])
             )
-
             ORDER BY RANDOM()
-
             LIMIT 5
         """, (
             hero["id"],
@@ -327,13 +306,12 @@ def hero_detail(slug):
 
         related_heroes = cur.fetchall()
 
-        # Imagesss
+        # Images
         cur.execute("""
             SELECT *
             FROM HeroImages
             WHERE hero_id = %s
         """, (hero["id"],))
-
         images = cur.fetchall()
 
         # Achievements
@@ -343,7 +321,6 @@ def hero_detail(slug):
             WHERE hero_id = %s
             ORDER BY year ASC
         """, (hero["id"],))
-
         achievements = cur.fetchall()
 
         # Sources
@@ -352,7 +329,6 @@ def hero_detail(slug):
             FROM Sources
             WHERE hero_id = %s
         """, (hero["id"],))
-
         sources = cur.fetchall()
 
         # Comments
@@ -363,15 +339,10 @@ def hero_detail(slug):
                 u.avatar,
                 c.created_at
             FROM Comments c
-
-            JOIN Users u
-                ON c.user_id = u.id
-
+            JOIN Users u ON c.user_id = u.id
             WHERE c.hero_id = %s
-
             ORDER BY c.created_at DESC
         """, (hero["id"],))
-
         comments = cur.fetchall()
 
     conn.close()
