@@ -250,72 +250,140 @@ def edit_profile():
 
 
 
+
+
 # ------------------- Hero Detail -------------------
-@main_bp.route("/hero/<int:hero_id>")
+@main_bp.route("/api/hero/<int:hero_id>")
 def hero_detail(hero_id):
-    if "email_address" not in session:
-        return redirect(url_for("auth.login"))
+    # if "email_address" not in session:
+    #     return redirect(url_for("auth.login"))
 
-    email = session["email_address"]
+    # email = session["email_address"]
+
     conn = get_db()
-    with conn.cursor() as cur:
-        cur.execute("SELECT * FROM Users WHERE email_address=%s", (email,))
-        user = cur.fetchone()
-        if not user:
-            return redirect(url_for("auth.login"))
 
+    with conn.cursor() as cur:
+
+        # Hero
         cur.execute("""
             SELECT h.*, e.name AS era_name
             FROM Heroes h
             LEFT JOIN Eras e ON h.era_id = e.id
             WHERE h.id=%s
         """, (hero_id,))
-        hero = cur.fetchone()
-        if not hero:
-            return "Hero not found", 404
 
+        hero = cur.fetchone()
+
+        if not hero:
+            return jsonify({"error": "Hero not found"}), 404
+
+        # Categories
         cur.execute("""
             SELECT c.name
             FROM Categories c
             JOIN HeroCategories hc ON c.id = hc.category_id
             WHERE hc.hero_id=%s
         """, (hero_id,))
+
         categories = [c["name"] for c in cur.fetchall()]
 
-        cur.execute("SELECT * FROM HeroImages WHERE hero_id=%s", (hero_id,))
+        # Related Heroes
+        cur.execute("""
+            SELECT DISTINCT
+                h.id,
+                h.name,
+                h.hero_image,
+                e.name AS era_name
+            FROM Heroes h
+            LEFT JOIN Eras e
+                ON h.era_id = e.id
+            LEFT JOIN HeroCategories hc
+                ON h.id = hc.hero_id
+            LEFT JOIN Categories c
+                ON hc.category_id = c.id
+
+            WHERE h.id != %s
+            AND (
+                h.era_id = %s
+                OR c.name = ANY(%s)
+            )
+
+            LIMIT 6
+        """, (
+            hero_id,
+            hero["era_id"],
+            categories
+        ))
+
+        related_heroes = cur.fetchall()
+
+        # Images
+        cur.execute("""
+            SELECT *
+            FROM HeroImages
+            WHERE hero_id=%s
+        """, (hero_id,))
+
         images = cur.fetchall()
 
-        cur.execute("SELECT * FROM Achievements WHERE hero_id=%s", (hero_id,))
+        # Achievements
+        cur.execute("""
+            SELECT *
+            FROM Achievements
+            WHERE hero_id=%s
+            ORDER BY year ASC
+        """, (hero_id,))
+
         achievements = cur.fetchall()
 
-        cur.execute("SELECT * FROM Sources WHERE hero_id=%s", (hero_id,))
+        # Sources
+        cur.execute("""
+            SELECT *
+            FROM Sources
+            WHERE hero_id=%s
+        """, (hero_id,))
+
         sources = cur.fetchall()
 
+        # Comments
         cur.execute("""
-            SELECT c.comment, u.full_name, u.avatar, c.created_at
+            SELECT
+                c.comment,
+                u.full_name,
+                u.avatar,
+                c.created_at
             FROM Comments c
-            JOIN Users u ON c.user_id = u.id
+            JOIN Users u
+            ON c.user_id = u.id
             WHERE c.hero_id=%s
             ORDER BY c.created_at DESC
         """, (hero_id,))
-        comments = cur.fetchall()
 
-        cur.execute("SELECT * FROM Favorites WHERE hero_id=%s AND user_id=%s", (hero_id, user["id"]))
-        favorite = cur.fetchone()
+        comments = cur.fetchall()
 
     conn.close()
 
-    return render_template(
-        "detail.html",
-        hero=hero,
-        categories=categories,
-        images=images,
-        achievements=achievements,
-        sources=sources,
-        comments=comments,
-        favorite=favorite,
-        user=user
-    )
+    return jsonify({
+        "hero": hero,
+        "categories": categories,
+        "images": images,
+        "achievements": achievements,
+        "sources": sources,
+        "comments": comments,
+        "related_heroes": related_heroes
+    })
+
+    # return render_template(
+    #     "detail.html",
+    #     hero=hero,
+    #     categories=categories,
+    #     images=images,
+    #     achievements=achievements,
+    #     sources=sources,
+    #     comments=comments,
+    #     favorite=favorite,
+    #     user=user
+    # )
 
 # ------------------- Favorites -------------------
 @main_bp.route("/hero/<int:hero_id>/add_favorite", methods=["POST"])
