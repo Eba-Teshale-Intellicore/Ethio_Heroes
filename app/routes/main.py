@@ -253,8 +253,8 @@ def edit_profile():
 
 
 # ------------------- Hero Detail -------------------
-@main_bp.route("/api/hero/<int:hero_id>")
-def hero_detail(hero_id):
+@main_bp.route("/api/hero/<slug>")
+def hero_detail(slug):
     # if "email_address" not in session:
     #     return redirect(url_for("auth.login"))
 
@@ -268,9 +268,10 @@ def hero_detail(hero_id):
         cur.execute("""
             SELECT h.*, e.name AS era_name
             FROM Heroes h
-            LEFT JOIN Eras e ON h.era_id = e.id
-            WHERE h.id=%s
-        """, (hero_id,))
+            LEFT JOIN Eras e
+                ON h.era_id = e.id
+            WHERE h.slug = %s
+        """, (slug,))
 
         hero = cur.fetchone()
 
@@ -281,9 +282,10 @@ def hero_detail(hero_id):
         cur.execute("""
             SELECT c.name
             FROM Categories c
-            JOIN HeroCategories hc ON c.id = hc.category_id
-            WHERE hc.hero_id=%s
-        """, (hero_id,))
+            JOIN HeroCategories hc
+                ON c.id = hc.category_id
+            WHERE hc.hero_id = %s
+        """, (hero["id"],))
 
         categories = [c["name"] for c in cur.fetchall()]
 
@@ -292,14 +294,18 @@ def hero_detail(hero_id):
             SELECT DISTINCT
                 h.id,
                 h.name,
+                h.slug,
                 h.hero_image,
                 h.short_description,
                 e.name AS era_name
             FROM Heroes h
+
             LEFT JOIN Eras e
                 ON h.era_id = e.id
+
             LEFT JOIN HeroCategories hc
                 ON h.id = hc.hero_id
+
             LEFT JOIN Categories c
                 ON hc.category_id = c.id
 
@@ -309,9 +315,11 @@ def hero_detail(hero_id):
                 OR c.name = ANY(%s)
             )
 
-            LIMIT 6
+            ORDER BY RANDOM()
+
+            LIMIT 5
         """, (
-            hero_id,
+            hero["id"],
             hero["era_id"],
             categories
         ))
@@ -322,8 +330,8 @@ def hero_detail(hero_id):
         cur.execute("""
             SELECT *
             FROM HeroImages
-            WHERE hero_id=%s
-        """, (hero_id,))
+            WHERE hero_id = %s
+        """, (hero["id"],))
 
         images = cur.fetchall()
 
@@ -331,9 +339,9 @@ def hero_detail(hero_id):
         cur.execute("""
             SELECT *
             FROM Achievements
-            WHERE hero_id=%s
+            WHERE hero_id = %s
             ORDER BY year ASC
-        """, (hero_id,))
+        """, (hero["id"],))
 
         achievements = cur.fetchall()
 
@@ -341,8 +349,8 @@ def hero_detail(hero_id):
         cur.execute("""
             SELECT *
             FROM Sources
-            WHERE hero_id=%s
-        """, (hero_id,))
+            WHERE hero_id = %s
+        """, (hero["id"],))
 
         sources = cur.fetchall()
 
@@ -354,11 +362,14 @@ def hero_detail(hero_id):
                 u.avatar,
                 c.created_at
             FROM Comments c
+
             JOIN Users u
-            ON c.user_id = u.id
-            WHERE c.hero_id=%s
+                ON c.user_id = u.id
+
+            WHERE c.hero_id = %s
+
             ORDER BY c.created_at DESC
-        """, (hero_id,))
+        """, (hero["id"],))
 
         comments = cur.fetchall()
 
