@@ -722,3 +722,4 @@ def hero_detail(slug):
 #         conn.commit()
 #     conn.close()
 #     return redirect(url_for("main.hero_detail", hero_id=hero_id))
+
