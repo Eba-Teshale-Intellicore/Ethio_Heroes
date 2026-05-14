@@ -42,7 +42,7 @@ github = oauth.register(
 @auth_bp.route("/signup", methods=["POST"])
 def signup():
     data = request.get_json()
-
+    
     full_name = data.get("full_name")
     email = data.get("email")
     country = data.get("country")
