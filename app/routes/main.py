@@ -86,94 +86,106 @@ def director_heroes():
 # ------------------- Search -------------------
 @main_bp.route("/api/search")
 def search():
-    query = request.args.get("q", "")
+    query    = request.args.get("q", "")
     category = request.args.get("category", "")
-    era = request.args.get("era", "")
-    page = int(request.args.get("page", 1))
+    era      = request.args.get("era", "")
+    page     = int(request.args.get("page", 1))
     per_page = 35
-    offset = (page - 1) * per_page
+    offset   = (page - 1) * per_page
 
     conn = get_db()
-    with conn.cursor() as cur:
-        # Count total filtered heroes
-        count_sql = """
-            SELECT COUNT(DISTINCT h.id) AS total
-            FROM Heroes h
-            LEFT JOIN Eras e ON h.era_id = e.id
-            LEFT JOIN HeroCategories hc ON h.id = hc.hero_id
-            LEFT JOIN Categories c ON hc.category_id = c.id
-            WHERE 1=1
-        """
-        count_params = []
 
-        if query:
-            count_sql += " AND (h.name ILIKE %s OR h.short_description ILIKE %s OR h.full_biography ILIKE %s)"
-            term = f"%{query}%"
-            count_params += [term, term, term]
+    try:
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
 
-        if category:
-            count_sql += " AND c.name = %s"
-            count_params.append(category)
+            # ── Count total filtered heroes ──────────────────────────
+            count_sql = """
+                SELECT COUNT(DISTINCT h.id) AS total
+                FROM Heroes h
+                LEFT JOIN Eras           e  ON h.era_id       = e.id
+                LEFT JOIN HeroCategories hc ON h.id           = hc.hero_id
+                LEFT JOIN Categories     c  ON hc.category_id = c.id
+                WHERE 1=1
+            """
+            count_params = []
 
-        if era:
-            count_sql += " AND e.name = %s"
-            count_params.append(era)
+            if query:
+                count_sql += " AND (h.name ILIKE %s OR h.short_description ILIKE %s OR h.full_biography ILIKE %s)"
+                term = f"%{query}%"
+                count_params += [term, term, term]
 
-        cur.execute(count_sql, count_params)
-        total_heroes = cur.fetchone()["total"]
-        total_pages = (total_heroes + per_page - 1) // per_page
+            if category:
+                count_sql += " AND c.name = %s"
+                count_params.append(category)
 
-        # Fetch filtered heroes
-        sql = """
+            if era:
+                count_sql += " AND e.name = %s"
+                count_params.append(era)
+
+            cur.execute(count_sql, count_params)
+            total_heroes = cur.fetchone()["total"]
+            total_pages  = (total_heroes + per_page - 1) // per_page
+
+
+            # ── Fetch filtered heroes ────────────────────────────────
+            sql = """
                 SELECT
                     h.id,
+                    h.slug,                        -- ✅ FIX: was missing, caused /hero/undefined
                     h.name,
                     h.hero_image,
                     h.short_description,
                     e.name AS era_name,
                     STRING_AGG(c.name, ', ') AS categories
                 FROM Heroes h
-                LEFT JOIN Eras e ON h.era_id = e.id
-                LEFT JOIN HeroCategories hc ON h.id = hc.hero_id
-                LEFT JOIN Categories c ON hc.category_id = c.id
+                LEFT JOIN Eras           e  ON h.era_id       = e.id
+                LEFT JOIN HeroCategories hc ON h.id           = hc.hero_id
+                LEFT JOIN Categories     c  ON hc.category_id = c.id
                 WHERE 1=1
             """
-        params = []
+            params = []
+            term   = f"%{query}%"
 
-        term = f"%{query}%"
+            if query:
+                sql += " AND (h.name ILIKE %s OR h.short_description ILIKE %s OR h.full_biography ILIKE %s)"
+                params += [term, term, term]
 
-        if query:
-            sql += " AND (h.name ILIKE %s OR h.short_description ILIKE %s OR h.full_biography ILIKE %s)"
-            params += [term, term, term]
+            if category:
+                sql += " AND c.name = %s"
+                params.append(category)
 
-        if category:
-            sql += " AND c.name = %s"
-            params.append(category)
+            if era:
+                sql += " AND e.name = %s"
+                params.append(era)
 
-        if era:
-            sql += " AND e.name = %s"
-            params.append(era)
+            # ✅ FIX: h.slug added to GROUP BY (required when selected)
+            sql += " GROUP BY h.id, h.slug, h.name, h.hero_image, h.short_description, e.name"
+            sql += " ORDER BY h.id DESC LIMIT %s OFFSET %s"
+            params += [per_page, offset]
 
-        sql += " GROUP BY h.id, e.name"
-        sql += " ORDER BY h.id DESC LIMIT %s OFFSET %s"
-        params += [per_page, offset]
+            cur.execute(sql, params)
+            heroes = [dict(row) for row in cur.fetchall()]
 
-        cur.execute(sql, params)
-        heroes = cur.fetchall()
+            # ── Filters ─────────────────────────────────────────────
+            cur.execute("SELECT * FROM Categories ORDER BY name")
+            categories = [dict(row) for row in cur.fetchall()]
 
-        cur.execute("SELECT * FROM Categories")
-        categories = cur.fetchall()
-        cur.execute("SELECT * FROM Eras")
-        eras = cur.fetchall()
+            cur.execute("SELECT * FROM Eras ORDER BY name")
+            eras = [dict(row) for row in cur.fetchall()]
 
+        return jsonify({
+            "heroes":      heroes,
+            "categories":  categories,
+            "eras":        eras,
+            "total_pages": total_pages,
+        })
 
-    conn.close()
-    return jsonify({
-    "heroes": heroes,
-    "categories": categories,
-    "eras": eras,
-    "total_pages": total_pages
-    })
+    except Exception as e:
+        print(f"[Search API Error] q={query!r} | error={e}")
+        return jsonify({"error": "Internal server error"}), 500
+
+    finally:
+        conn.close()
     # return render_template(
     #     "home.html",
     #     heroes=heroes,
