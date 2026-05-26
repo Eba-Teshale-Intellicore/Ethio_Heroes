@@ -983,20 +983,41 @@ def hero_detail(slug):
             categories      = [row["name"] for row in cur.fetchall()]
             category_filter = categories if categories else ["__none__"]
 
+            # # 3. RELATED HEROES
+            # cur.execute("""
+            #     SELECT DISTINCT
+            #         h.id, h.name, h.slug, h.hero_image, h.short_description,
+            #         e.name AS era_name
+            #     FROM Heroes h
+            #     LEFT JOIN Eras e            ON h.era_id       = e.id
+            #     LEFT JOIN HeroCategories hc ON h.id           = hc.hero_id
+            #     LEFT JOIN Categories c      ON hc.category_id = c.id
+            #     WHERE h.id != %s
+            #     AND (h.era_id = %s OR c.name = ANY(%s::text[]))
+            #     ORDER BY RANDOM()
+            #     LIMIT 5
+            # """, (hero_id, era_id, category_filter))
+            # related_heroes = [dict(r) for r in cur.fetchall()]
             # 3. RELATED HEROES
+        # 3. RELATED HEROES
             cur.execute("""
-                SELECT DISTINCT
-                    h.id, h.name, h.slug, h.hero_image, h.short_description,
-                    e.name AS era_name
-                FROM Heroes h
-                LEFT JOIN Eras e            ON h.era_id       = e.id
-                LEFT JOIN HeroCategories hc ON h.id           = hc.hero_id
-                LEFT JOIN Categories c      ON hc.category_id = c.id
-                WHERE h.id != %s
-                AND (h.era_id = %s OR c.name = ANY(%s::text[]))
+                WITH MatchedHeroes AS (
+                    SELECT DISTINCT
+                        h.id, h.name, h.slug, h.hero_image, h.short_description,
+                        e.name AS era_name
+                    FROM Heroes h
+                    LEFT JOIN Eras e            ON h.era_id       = e.id
+                    LEFT JOIN HeroCategories hc ON h.id           = hc.hero_id
+                    LEFT JOIN Categories c      ON hc.category_id = c.id
+                    WHERE h.id != %s
+                    AND (h.era_id = %s OR c.name = ANY(%s::text[]))
+                )
+                SELECT * FROM MatchedHeroes
                 ORDER BY RANDOM()
                 LIMIT 5
             """, (hero_id, era_id, category_filter))
+            
+            # ADD THIS LINE BACK IN:
             related_heroes = [dict(r) for r in cur.fetchall()]
 
             # 4. IMAGES
@@ -1040,5 +1061,47 @@ def hero_detail(slug):
         import traceback; traceback.print_exc()
         return json_response({"error": "Internal server error"}, 500)
 
+    finally:
+        conn.close()
+
+
+@main_bp.route("/api/hero/<slug>/comment", methods=["POST"])
+def post_hero_comment(slug):
+    data = request.get_json()
+    comment_text = data.get("comment")
+
+    if not comment_text:
+        return json_response({"error": "Comment cannot be empty"}, 400)
+
+    # Note: You currently don't have user authentication in your frontend request.
+    # For now, I'm hardcoding a dummy user_id (e.g., 1) so it doesn't crash your DB.
+    # You MUST replace this with actual user session/token logic later!
+    dummy_user_id = 1 
+
+    conn = get_db()
+    try:
+        with conn.cursor() as cur:
+            # First, get the hero_id from the slug
+            cur.execute("SELECT id FROM Heroes WHERE slug = %s", (slug,))
+            hero = cur.fetchone()
+            if not hero:
+                return json_response({"error": "Hero not found"}, 404)
+            
+            hero_id = hero["id"]
+
+            # Insert the comment
+            cur.execute("""
+                INSERT INTO Comments (hero_id, user_id, comment, created_at)
+                VALUES (%s, %s, %s, NOW())
+            """, (hero_id, dummy_user_id, comment_text))
+            
+            conn.commit()
+
+        return json_response({"message": "Comment posted successfully"}, 200)
+
+    except Exception as e:
+        print(f"[Comment API Error] {e}")
+        conn.rollback()
+        return json_response({"error": "Internal server error"}, 500)
     finally:
         conn.close()
