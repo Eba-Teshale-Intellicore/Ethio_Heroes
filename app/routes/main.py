@@ -1351,17 +1351,34 @@ def hero_detail(slug):
             categories      = [row["name"] for row in cur.fetchall()]
             category_filter = categories if categories else ["__none__"]
 
+            # # 3. RELATED HEROES
+            # cur.execute("""
+            #     SELECT DISTINCT
+            #         h.id, h.name, h.slug, h.hero_image, h.short_description,
+            #         e.name AS era_name
+            #     FROM Heroes h
+            #     LEFT JOIN Eras e            ON h.era_id       = e.id
+            #     LEFT JOIN HeroCategories hc ON h.id           = hc.hero_id
+            #     LEFT JOIN Categories c      ON hc.category_id = c.id
+            #     WHERE h.id != %s
+            #     AND (h.era_id = %s OR c.name = ANY(%s::text[]))
+            #     ORDER BY RANDOM()
+            #     LIMIT 5
+            # """, (hero_id, era_id, category_filter))
+            # related_heroes = [dict(r) for r in cur.fetchall()]
             # 3. RELATED HEROES
             cur.execute("""
-                SELECT DISTINCT
-                    h.id, h.name, h.slug, h.hero_image, h.short_description,
-                    e.name AS era_name
-                FROM Heroes h
-                LEFT JOIN Eras e            ON h.era_id       = e.id
-                LEFT JOIN HeroCategories hc ON h.id           = hc.hero_id
-                LEFT JOIN Categories c      ON hc.category_id = c.id
-                WHERE h.id != %s
-                AND (h.era_id = %s OR c.name = ANY(%s::text[]))
+                SELECT * FROM (
+                    SELECT DISTINCT
+                        h.id, h.name, h.slug, h.hero_image, h.short_description,
+                        e.name AS era_name
+                    FROM Heroes h
+                    LEFT JOIN Eras e            ON h.era_id        = e.id
+                    LEFT JOIN HeroCategories hc ON h.id            = hc.hero_id
+                    LEFT JOIN Categories c      ON hc.category_id = c.id
+                    WHERE h.id != %s
+                    AND (h.era_id = %s OR c.name = ANY(%s::text[]))
+                ) AS distinct_heroes
                 ORDER BY RANDOM()
                 LIMIT 5
             """, (hero_id, era_id, category_filter))
