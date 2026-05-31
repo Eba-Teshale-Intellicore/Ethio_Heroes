@@ -86,6 +86,7 @@ CREATE TABLE IF NOT EXISTS Achievements(
     description TEXT,
     year INTEGER
 );
+
 -- ==============================
 -- SOURCES
 -- ==============================

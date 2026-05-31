@@ -68,7 +68,7 @@ app.secret_key = os.environ.get(
     "fallback-secret-key"
 )
 
-oauth.init_app(app)
+oauth.init_app(app) 
 
 app.register_blueprint(auth_bp)
 app.register_blueprint(main_bp)

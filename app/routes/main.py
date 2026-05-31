@@ -1351,21 +1351,6 @@ def hero_detail(slug):
             categories      = [row["name"] for row in cur.fetchall()]
             category_filter = categories if categories else ["__none__"]
 
-            # # 3. RELATED HEROES
-            # cur.execute("""
-            #     SELECT DISTINCT
-            #         h.id, h.name, h.slug, h.hero_image, h.short_description,
-            #         e.name AS era_name
-            #     FROM Heroes h
-            #     LEFT JOIN Eras e            ON h.era_id       = e.id
-            #     LEFT JOIN HeroCategories hc ON h.id           = hc.hero_id
-            #     LEFT JOIN Categories c      ON hc.category_id = c.id
-            #     WHERE h.id != %s
-            #     AND (h.era_id = %s OR c.name = ANY(%s::text[]))
-            #     ORDER BY RANDOM()
-            #     LIMIT 5
-            # """, (hero_id, era_id, category_filter))
-            # related_heroes = [dict(r) for r in cur.fetchall()]
             # 3. RELATED HEROES
             cur.execute("""
                 SELECT * FROM (
@@ -1468,5 +1453,361 @@ def post_hero_comment(slug):
         print(f"[Comment API Error] {e}")
         conn.rollback()
         return json_response({"error": "Internal server error"}, 500)
+    finally:
+        conn.close()
+
+
+
+
+
+# @main_bp.route("/api/heroes", methods=["POST"])
+# def create_hero():
+#     data = request.get_json()
+
+#     # Required fields
+#     name = data.get("name")
+#     short_description = data.get("short_description")
+
+#     if not name or not short_description:
+#         return json_response({
+#             "error": "name and short_description are required"
+#         }, 400)
+
+#     birth_year = data.get("birth_year")
+#     death_year = data.get("death_year")
+#     era_id = data.get("era_id")
+#     full_biography = data.get("full_biography")
+#     full_history = data.get("full_history")
+#     nationality = data.get("nationality", "Ethiopian")
+#     hero_image = data.get("hero_image")
+
+#     conn = get_db()
+
+#     try:
+#         with conn.cursor() as cur:
+
+#             cur.execute("""
+#                 INSERT INTO Heroes(
+#                     name,
+#                     birth_year,
+#                     death_year,
+#                     era_id,
+#                     short_description,
+#                     full_biography,
+#                     full_history,
+#                     nationality,
+#                     hero_image
+#                 )
+#                 VALUES (
+#                     %s,%s,%s,%s,%s,%s,%s,%s,%s
+#                 )
+#                 RETURNING *
+#             """, (
+#                 name,
+#                 birth_year,
+#                 death_year,
+#                 era_id,
+#                 short_description,
+#                 full_biography,
+#                 full_history,
+#                 nationality,
+#                 hero_image
+#             ))
+
+#             hero = cur.fetchone()
+#             conn.commit()
+
+#         return json_response({
+#             "message": "Hero created successfully",
+#             "hero": dict(hero)
+#         }, 201)
+
+#     except Exception as e:
+#         conn.rollback()
+#         print(f"[Create Hero Error] {e}")
+
+#         return json_response({
+#             "error": str(e)
+#         }, 500)
+
+#     finally:
+#         conn.close()
+
+@main_bp.route("/api/heroes", methods=["POST"])
+def create_hero():
+
+    data = request.get_json()
+
+    conn = get_db()
+
+    try:
+
+        with conn.cursor() as cur:
+
+            name = data.get("name")
+
+            if not name:
+                return json_response(
+                    {"error": "Hero name required"},
+                    400
+                )
+
+            slug = generate_slug(name)
+
+            # make slug unique
+
+            original_slug = slug
+
+            counter = 1
+
+            while True:
+
+                cur.execute(
+                    """
+                    SELECT id
+                    FROM Heroes
+                    WHERE slug=%s
+                    """,
+                    (slug,)
+                )
+
+                exists = cur.fetchone()
+
+                if not exists:
+                    break
+
+                slug = (
+                    f"{original_slug}-{counter}"
+                )
+
+                counter += 1
+
+            # HERO
+
+            cur.execute(
+                """
+                INSERT INTO Heroes(
+                    name,
+                    slug,
+                    birth_year,
+                    death_year,
+                    era_id,
+                    short_description,
+                    full_biography,
+                    full_history,
+                    nationality,
+                    hero_image
+                )
+                VALUES(
+                    %s,%s,%s,%s,%s,%s,%s,%s,%s,%s
+                )
+                RETURNING id
+                """,
+                (
+                    name,
+                    slug,
+                    data.get("birth_year"),
+                    data.get("death_year"),
+                    data.get("era_id"),
+                    data.get("short_description"),
+                    data.get("full_biography"),
+                    data.get("full_history"),
+                    data.get("nationality"),
+                    data.get("hero_image")
+                )
+            )
+
+            hero_id = cur.fetchone()["id"]
+
+            # --------------------
+            # CATEGORIES
+            # --------------------
+
+            for category_id in data.get(
+                "categories",
+                []
+            ):
+
+                cur.execute(
+                    """
+                    INSERT INTO HeroCategories(
+                        hero_id,
+                        category_id
+                    )
+                    VALUES(%s,%s)
+                    """,
+                    (
+                        hero_id,
+                        category_id
+                    )
+                )
+
+            # --------------------
+            # IMAGES
+            # --------------------
+
+            for image in data.get(
+                "images",
+                []
+            ):
+
+                cur.execute(
+                    """
+                    INSERT INTO HeroImages(
+                        hero_id,
+                        image_url,
+                        caption
+                    )
+                    VALUES(%s,%s,%s)
+                    """,
+                    (
+                        hero_id,
+                        image.get(
+                            "image_url"
+                        ),
+                        image.get(
+                            "caption"
+                        )
+                    )
+                )
+
+            # --------------------
+            # ACHIEVEMENTS
+            # --------------------
+
+            for achievement in data.get(
+                "achievements",
+                []
+            ):
+
+                cur.execute(
+                    """
+                    INSERT INTO Achievements(
+                        hero_id,
+                        title,
+                        description,
+                        year
+                    )
+                    VALUES(
+                        %s,%s,%s,%s
+                    )
+                    """,
+                    (
+                        hero_id,
+                        achievement.get(
+                            "title"
+                        ),
+                        achievement.get(
+                            "description"
+                        ),
+                        achievement.get(
+                            "year"
+                        )
+                    )
+                )
+
+            # --------------------
+            # SOURCES
+            # --------------------
+
+            for source in data.get(
+                "sources",
+                []
+            ):
+
+                cur.execute(
+                    """
+                    INSERT INTO Sources(
+                        hero_id,
+                        source_title,
+                        source_link
+                    )
+                    VALUES(
+                        %s,%s,%s
+                    )
+                    """,
+                    (
+                        hero_id,
+                        source.get(
+                            "source_title"
+                        ),
+                        source.get(
+                            "source_link"
+                        )
+                    )
+                )
+
+            conn.commit()
+
+            return json_response(
+                {
+                    "success": True,
+                    "hero_id": hero_id,
+                    "slug": slug,
+                    "message":
+                    "Hero created successfully"
+                },
+                201
+            )
+
+    except Exception as e:
+
+        conn.rollback()
+
+        print(
+            f"[CREATE HERO ERROR] {e}"
+        )
+
+        return json_response(
+            {
+                "success": False,
+                "error": str(e)
+            },
+            500
+        )
+
+    finally:
+        conn.close()
+
+@main_bp.route("/api/categories")
+def get_categories():
+
+    conn = get_db()
+
+    try:
+        with conn.cursor() as cur:
+
+            cur.execute("""
+                SELECT *
+                FROM Categories
+                ORDER BY name
+            """)
+
+            return json_response(
+                cur.fetchall()
+            )
+
+    finally:
+        conn.close()
+
+
+@main_bp.route("/api/eras")
+def get_eras():
+
+    conn = get_db()
+
+    try:
+        with conn.cursor() as cur:
+
+            cur.execute("""
+                SELECT *
+                FROM Eras
+                ORDER BY name
+            """)
+
+            return json_response(
+                cur.fetchall()
+            )
+
     finally:
         conn.close()
